@@ -163,3 +163,4 @@ cython_debug/
 *.parquet
 *.png
 *.json
+!docs/*.png
