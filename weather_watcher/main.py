@@ -3,7 +3,7 @@ import asyncio
 import json
 import os
 from dataclasses import asdict
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
 
 import pandas as pd
@@ -51,9 +51,12 @@ def parse_forecast(raw: WeatherData, max_hrs: int) -> pd.DataFrame:
 
     hourly = pd.concat(dfs)
     # Time
+    now = datetime.now()
     hourly["time"] = pd.to_datetime(hourly["time"])
     hourly = hourly.sort_values(by=["time"])
-    # hourly = hourly.loc[hourly["time"] >= datetime.now()]
+    hourly = hourly.loc[
+        hourly["time"] <= now.replace(day=(now + timedelta(days=1)).day)
+    ]
     return hourly.reset_index().iloc[0:max_hrs]
 
 
@@ -98,7 +101,7 @@ async def run(
     # Get data
     raw = get_forecast(weather_api_key, zip_code=zip_code)
     # Parse
-    hourly = parse_forecast(raw, max_hrs=24)
+    hourly = parse_forecast(raw, max_hrs=48)
     stats = WeatherStats.apply(hourly, raw, zip_code)
     msgs = stats.build_msgs()
     logger.info(msgs)
@@ -108,7 +111,7 @@ async def run(
     cache_all(stats, hourly, fig, now, out_dir)
     # send msg
     if not skip_telegram:
-        logger.info("Sending...")
+        logger.info(f"Sending to chat id {chat_id}..")
         await send_msg_to_bot(bot, chat_id, "\n".join(msgs))
         await send_photo_to_bot(bot, chat_id, img_path)
     else:

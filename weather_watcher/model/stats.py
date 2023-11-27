@@ -64,7 +64,7 @@ class TimeStats(GeneralStat):
         msgs = [
             f"🌡️ Weather Report for {meta.location} 🌡️",
             f"Generated at: {datetime.now().strftime('%a, %b %d %Y @ %I:%M%p')}",
-            f"From: {time_to_str(self.from_time)} to {time_to_str(self.to_time)}",
+            f"From: {self.from_time.isoformat()} to {self.to_time.isoformat()}",
             "",
         ]
         msgs.append(f"🌅 Sunrise: {time_to_str(self.sunrise)}")
@@ -224,7 +224,8 @@ class FreezingStats(GeneralStat):
     @staticmethod
     @overrides
     def apply(df: pd.DataFrame) -> "FreezingStats":
-        min_temp_f: float = 32.00
+        # Some buffer between 33 and 32
+        min_temp_f: float = 33.0
         # Defaults
         avg_low_during_freezing = None
         freezing_hrs = 0

@@ -62,7 +62,7 @@ def plot_weather(hourly: pd.DataFrame, st: WeatherStats) -> go.Figure:
         secondary_y=False,
     )
     # Freezing
-    hourly["freezing"] = 32.00
+    hourly["freezing"] = 32.0
     fig.add_trace(
         go.Scatter(
             x=hourly["time"],
