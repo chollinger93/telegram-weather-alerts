@@ -20,6 +20,8 @@ from plotting.plots import plot_weather
 def get_forecast(key: str, zip_code: str, days: int = 2) -> WeatherData:
     url = f"https://api.weatherapi.com/v1/forecast.json?q={zip_code}&days={days}&key={key}"
     resp = urllib3.request("GET", url)  # type: ignore
+    if resp.status != 200:
+        raise ValueError(f"Bad status code {resp.status}: {resp.data}")
     return resp.json()
 
 
@@ -54,9 +56,7 @@ def parse_forecast(raw: WeatherData, max_hrs: int) -> pd.DataFrame:
     now = datetime.now()
     hourly["time"] = pd.to_datetime(hourly["time"])
     hourly = hourly.sort_values(by=["time"])
-    hourly = hourly.loc[
-        hourly["time"] <= now.replace(day=(now + timedelta(days=1)).day)
-    ]
+    hourly = hourly.loc[hourly["time"] <= now + timedelta(days=1)]
     return hourly.reset_index().iloc[0:max_hrs]
 
 

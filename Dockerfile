@@ -9,7 +9,7 @@ RUN apt-get upgrade -y
 RUN pip3 install poetry
 RUN poetry config virtualenvs.create false
 
-RUN poetry install --no-dev --no-ansi --no-interaction 
+RUN poetry install --no-dev --no-ansi --no-interaction --no-root
 
 # Run
 ENTRYPOINT ["python3", "/app/weather_watcher/main.py"]
