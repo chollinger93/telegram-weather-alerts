@@ -216,9 +216,14 @@ class FreezingStats(GeneralStat):
                 f"❄️ Average low will be: {self.avg_low_during_freezing:.1f}F during that time!"
             )
             # Back to safety
-            msgs.append(
-                f"🌤️ Safe temperature of {self.first_safe_temp}F reached at {self.first_safe_temp_time}"
-            )
+            if not self.first_safe_temp:
+                msgs.append(
+                    f"🌤️ No safe temperatures in the next {meta.observed_hrs} hours!"
+                )
+            else:
+                msgs.append(
+                    f"🌤️ Safe temperature of {self.first_safe_temp}F reached at {self.first_safe_temp_time}"
+                )
         return msgs
 
     @staticmethod
@@ -248,9 +253,13 @@ class FreezingStats(GeneralStat):
             ]
             first_safe_temp_df = safe_temps_reached_df.loc[
                 safe_temps_reached_df["time"] == safe_temps_reached_df["time"].min()
-            ].iloc[0]
-            first_safe_temp = first_safe_temp_df["temp_f"]
-            first_safe_temp_time = first_safe_temp_df["time"]
+            ]
+            if len(first_safe_temp_df) > 1:
+                first_safe_temp = first_safe_temp_df["temp_f"]
+                first_safe_temp_time = first_safe_temp_df["time"]
+            else:
+                first_safe_temp = None
+                first_safe_temp_time = None
 
         return FreezingStats(
             is_freezing=is_freezing,

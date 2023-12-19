@@ -155,7 +155,7 @@ async def main():
     while True:
         dt = iter.get_next(datetime)
         if not args["force"]:
-            logger.info(f"Next run at {dt}")
+            logger.info(f"Next run at {dt} for {args['zip_code']}")
             pause.until(dt)
         else:
             logger.warning("Force mode, skipping cron")
