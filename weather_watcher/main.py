@@ -5,6 +5,7 @@ import os
 from dataclasses import asdict
 from datetime import datetime, timedelta
 from pathlib import Path
+from typing import Optional
 
 import pandas as pd
 import pause
@@ -17,12 +18,17 @@ from model.stats import WeatherData, WeatherStats
 from plotting.plots import plot_weather
 
 
-def get_forecast(key: str, zip_code: str, days: int = 2) -> WeatherData:
-    url = f"https://api.weatherapi.com/v1/forecast.json?q={zip_code}&days={days}&key={key}"
-    resp = urllib3.request("GET", url)  # type: ignore
-    if resp.status != 200:
-        raise ValueError(f"Bad status code {resp.status}: {resp.data}")
-    return resp.json()
+def get_forecast(key: str, zip_code: str, days: int = 2) -> Optional[WeatherData]:
+    try:
+        url = f"https://api.weatherapi.com/v1/forecast.json?q={zip_code}&days={days}&key={key}"
+        headers = {"Content-Type": "application/json"}
+        resp = urllib3.request("GET", url, retries=10, timeout=10, headers=headers)
+        if resp.status != 200:
+            raise ValueError(f"Bad status code {resp.status}: {resp.data}")
+        return resp.json()
+    except Exception as e:
+        logger.error(f"Failed to get forecast: {e}")
+        return None
 
 
 def parse_forecast(raw: WeatherData, max_hrs: int) -> pd.DataFrame:
@@ -100,6 +106,9 @@ async def run(
     bot = telegram.Bot(telegram_token)
     # Get data
     raw = get_forecast(weather_api_key, zip_code=zip_code)
+    if not raw:
+        logger.warning("Failed to get forecast")
+        return
     # Parse
     hourly = parse_forecast(raw, max_hrs=48)
     stats = WeatherStats.apply(hourly, raw, zip_code)
