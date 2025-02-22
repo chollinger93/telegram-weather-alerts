@@ -62,9 +62,9 @@ class TimeStats(GeneralStat):
     @overrides
     def get_msg(self, meta: MetaStats) -> list[str]:
         msgs = [
-            f"🌡️ Weather Report for {meta.location} 🌡️",
-            f"Generated at: {datetime.now().strftime('%a, %b %d %Y @ %I:%M%p')}",
-            f"From: {self.from_time.isoformat()} to {self.to_time.isoformat()}",
+            f"🌡️ *Weather Report for {meta.location}* 🌡️",
+            f"*Generated at*: {datetime.now().strftime('%a, %b %d %Y @ %I:%M%p')}",
+            f"*From*: {self.from_time.isoformat()} to {self.to_time.isoformat()}",
             "",
         ]
         msgs.append(f"🌅 Sunrise: {time_to_str(self.sunrise)}")
@@ -298,7 +298,7 @@ class WeatherStats:
         for stat in [self.time, self.temp, self.rain, self.wind, self.freezing]:
             header = stat.name
             if header:
-                msgs.append(f"## {header}")
+                msgs.append(f"*{header}*")
             msgs.extend(stat.get_msg(self.meta))
             msgs.append("")
         return msgs

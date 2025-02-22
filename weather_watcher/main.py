@@ -16,6 +16,7 @@ from croniter import croniter
 from loguru import logger
 from model.stats import WeatherData, WeatherStats
 from plotting.plots import plot_weather
+from utils import escape_telegram_markdown_v2
 
 
 def get_forecast(key: str, zip_code: str, days: int = 2) -> Optional[WeatherData]:
@@ -88,7 +89,11 @@ async def send_photo_to_bot(bot: telegram.Bot, chat_id: int, img_path: Path):
 
 async def send_msg_to_bot(bot: telegram.Bot, chat_id: int, msg: str):
     async with bot:
-        await bot.send_message(text=msg, chat_id=chat_id)  # type: ignore
+        escaped_msg = escape_telegram_markdown_v2(msg)
+        logger.debug(f"Sending msg: {escaped_msg}")
+        await bot.send_message(
+            text=escaped_msg, chat_id=chat_id, parse_mode="MarkdownV2"
+        )  # type: ignore
 
 
 async def run(
