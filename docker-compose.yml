@@ -8,5 +8,5 @@ services:
     env_file: .env
     volumes:
       - ./data:/data
-    restart: always
+    restart: unless-stopped
     command: '-c ${TELEGRAM_CHAT_ID} -z ${WEATHER_ZIP_CODE} -s "${CRON_SCHEDULE}" -o /data'

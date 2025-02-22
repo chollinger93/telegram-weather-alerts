@@ -10,4 +10,4 @@ if [[ -z $WEATHER_API_KEY || -z $TELEGRAM_TOKEN || -z $TELEGRAM_CHAT_ID || -z $W
 fi
 
 mkdir -p data/
-docker-compose up -d
+docker compose up -d
