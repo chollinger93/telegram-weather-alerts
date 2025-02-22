@@ -54,6 +54,21 @@ Recommended.
 bash run.sh
 ```
 
+Alternatively:
+
+```bash
+export DOCKER_DEFAULT_PLATFORM=linux/amd64
+docker compose build
+docker tag weather-alerts:latest your.repo.url/weather-alerts
+docker push your.repo.url/weather-alerts
+```
+
+## Test
+
+```bash
+pytest weather_watcher/test
+```
+
 ## Example output
 
 ### Chart
