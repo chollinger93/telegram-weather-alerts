@@ -1,18 +1,12 @@
-version: "3"
-
 services:
   weather:
+    image: weather-alerts:latest
     build:
       context: .
       dockerfile: Dockerfile
     container_name: weather-alerts
-    environment:
-      - TZ=America/New_York
-      - WEATHER_API_KEY=${WEATHER_API_KEY}
-      - TELEGRAM_TOKEN=${TELEGRAM_TOKEN}
-      - TELEGRAM_CHAT_ID=${TELEGRAM_CHAT_ID}
-      - WEATHER_ZIP_CODE=${WEATHER_ZIP_CODE}
+    env_file: .env
     volumes:
       - ./data:/data
     restart: always
-    command: "-c ${TELEGRAM_CHAT_ID} -z ${WEATHER_ZIP_CODE} -s '00 10 * * *' -o /data"
+    command: '-c ${TELEGRAM_CHAT_ID} -z ${WEATHER_ZIP_CODE} -s "${CRON_SCHEDULE}" -o /data'
