@@ -5,7 +5,8 @@ from typing import Any, Optional
 
 import pandas as pd
 from overrides import overrides
-from utils import time_to_str
+
+from weather_watcher.utils import time_to_str
 
 WeatherData = dict[str, Any]
 

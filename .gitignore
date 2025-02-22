@@ -166,3 +166,4 @@ cython_debug/
 !docs/*.png
 .env
 deploy.sh
+!sample_ky.json

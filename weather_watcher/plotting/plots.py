@@ -1,8 +1,9 @@
 import pandas as pd
 import plotly.graph_objects as go
-from model.stats import WeatherStats
 from plotly.subplots import make_subplots
-from utils import time_to_str
+
+from weather_watcher.model.stats import WeatherStats
+from weather_watcher.utils import time_to_str
 
 
 def plot_weather(hourly: pd.DataFrame, st: WeatherStats) -> go.Figure:
