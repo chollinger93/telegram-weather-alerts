@@ -1,6 +1,6 @@
 services:
   weather:
-    image: ${REPOSITORY_URL}:${TAG}
+    image: ${REPOSITORY_URL}:${TAG:-latest}
     build:
       context: .
       dockerfile: Dockerfile
