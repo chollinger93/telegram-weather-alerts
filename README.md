@@ -4,7 +4,13 @@ Very simple program/script that:
 
 - Grabs weather data for a given ZIP code
 - Sums it up by temperature, wind, humidity, rain, with a special focus on whether it'll freeze
-- Sends it to Telegram on a cron schedule
+- Sends it to various sinks via a cron schedule:
+  - **Telegram** as formatted message for human consumption
+  - **Graphs** as `png` (on disk)
+  - **Statistics** as `parquet` (on disk)
+  - **Raw data**
+    - as `json` (on disk)
+    - to `InfluxDB`
 
 Useful for:
 
@@ -21,28 +27,29 @@ Always looks at the next 24hrs in a given ZIP code.
 You need an API key for a Telegram bot + a key for [weatherapi.com](https://weatherapi.com), both of which are free.
 
 ```bash
-poetry shell
-poetry install
+cp .env.example .env
+$EDITOR .env
+uv sync
 ```
 
 ## Run
 
 ```bash
-❯ python3 weather_watcher/main.py --help
-usage: main.py [-h] -c CHAT_ID -z ZIP_CODE -s CRON -o OUT_DIR [-f] [--no-telegram]
+❯ uv run weather_watcher/main.py --help
+usage: main.py [-h] -z ZIP_CODE [-s CRON] -o OUT_DIR [-f] [-c CHAT_ID] [--no-telegram]
 
 Grab weather, send to telegram
 
 options:
   -h, --help            show this help message and exit
-  -c CHAT_ID, --chat CHAT_ID
-                        Chat ID
   -z ZIP_CODE, --zip ZIP_CODE
                         ZIP
-  -s CRON, --cron CRON  Crontab schedule
+  -s CRON, --cron CRON  Crontab schedule; required if --force isn't set
   -o OUT_DIR, --out OUT_DIR
-                        Out dir
+                        Out dir for storing sink data
   -f, --force           Send immediately
+  -c CHAT_ID, --chat CHAT_ID
+                        Chat ID; required if --skip-telegram isn't set
   --no-telegram         Skip telegram
 ```
 
@@ -63,10 +70,20 @@ docker tag weather-alerts:latest your.repo.url/weather-alerts
 docker push your.repo.url/weather-alerts
 ```
 
+Directly:
+
+```bash
+set -a
+source .env
+set +a
+# Locally
+uv run weather_watcher/main.py -z 10001 -f -o ./data --no-telegram
+```
+
 ## Test
 
 ```bash
-pytest weather_watcher/test
+uv run pytest weather_watcher/test
 ```
 
 ## Example output
