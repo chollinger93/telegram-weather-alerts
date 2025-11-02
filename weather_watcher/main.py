@@ -1,22 +1,19 @@
 import argparse
 import asyncio
-import json
 import os
-from dataclasses import asdict
 from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Optional
 
 import pandas as pd
 import pause
-import plotly.graph_objects as go
 import telegram
 import urllib3
 from croniter import croniter
 from loguru import logger
 
 from weather_watcher.model.stats import WeatherData, WeatherStats
-from weather_watcher.plotting.plots import plot_weather
+from weather_watcher.sinks.sink import FigureSink, ParquetSink, StatsJSONSink
 from weather_watcher.utils import escape_telegram_markdown_v2
 
 
@@ -72,21 +69,12 @@ class WeatherWatcher:
     def cache_all(
         self,
         st: WeatherStats,
-        df: pd.DataFrame,
-        fig: go.Figure,
         now: str,
         out_path: Path,
     ) -> None:
-        # Img
-        img_path = out_path / f"{now}_weather.png"
-        fig.write_image(img_path)
-        # Data
-        data_path = out_path / f"{now}_weather.parquet"
-        df.to_parquet(data_path)
-        # Stats
-        stats_path = out_path / f"{now}_weather_stats.json"
-        with open(stats_path, "w") as f:
-            f.write(json.dumps(asdict(st), indent=4, sort_keys=True, default=str))
+        FigureSink(out_path).sink(st, now)
+        ParquetSink(out_path).sink(st, now)
+        StatsJSONSink(out_path).sink(st, now)
 
     async def send_photo_to_bot(self, bot: telegram.Bot, chat_id: int, img_path: Path):
         async with bot:
@@ -126,8 +114,8 @@ class WeatherWatcher:
         logger.info(msgs)
         # Build image
         img_path = out_dir / f"{now}_weather.png"
-        fig = plot_weather(hourly, stats)
-        self.cache_all(stats, hourly, fig, now, out_dir)
+        fig = stats.plot_weather()
+        self.cache_all(stats, now, out_dir)
         # send msg
         if not skip_telegram:
             logger.info(f"Sending to chat id {chat_id}..")
