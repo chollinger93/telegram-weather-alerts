@@ -12,7 +12,6 @@ from loguru import logger
 from weather_watcher.model.stats import WeatherStats
 from weather_watcher.parser.parser import WeatherAPIParser, WeatherParser
 from weather_watcher.sinks.sink import FigureSink, ParquetSink, Sink, StatsJSONSink
-from weather_watcher.utils import escape_telegram_markdown_v2
 
 
 class WeatherWatcher:
@@ -23,18 +22,6 @@ class WeatherWatcher:
     ) -> None:
         self.parser = parser
         self._sinks = sinks
-
-    async def send_photo_to_bot(self, bot: telegram.Bot, chat_id: int, img_path: Path):
-        async with bot:
-            await bot.send_photo(chat_id=chat_id, photo=open(img_path, "rb"))  # type: ignore
-
-    async def send_msg_to_bot(self, bot: telegram.Bot, chat_id: int, msg: str):
-        async with bot:
-            escaped_msg = escape_telegram_markdown_v2(msg)
-            logger.debug(f"Sending msg: {escaped_msg}")
-            await bot.send_message(
-                text=escaped_msg, chat_id=chat_id, parse_mode="MarkdownV2"
-            )  # type: ignore
 
     async def run(
         self,
@@ -60,17 +47,28 @@ class WeatherWatcher:
         stats = WeatherStats.apply(hourly, raw, zip_code)
         msgs = stats.build_msgs()
         logger.info(msgs)
-        # Build image
-        img_path = out_dir / f"{now}_weather.png"
-        self._cache_all(stats, now, out_dir)
-        # send msg
-        if not skip_telegram:
-            logger.info(f"Sending to chat id {chat_id}..")
-            await self.send_msg_to_bot(bot, chat_id, "\n".join(msgs))
-            await self.send_photo_to_bot(bot, chat_id, img_path)
-        else:
-            logger.warning("Skipping telegram")
+        # Cache, send to telegram
+        self._sink_all(stats, now, out_dir, bot, chat_id, skip_telegram)
         return msgs
+
+    def _sink_all(
+        self,
+        st: WeatherStats,
+        now: str,
+        out_path: Path,
+        bot: telegram.Bot,
+        chat_id: int,
+        skip_telegram: bool,
+    ) -> None:
+        for sink in self._sinks:
+            sink(
+                st=st,
+                now=now,
+                out_path=out_path,
+                bot=bot,
+                chat_id=chat_id,
+                skip_telegram=skip_telegram,
+            ).sink()
 
     async def main(self):
         parser = argparse.ArgumentParser(description="Grab weather, send to telegram")
@@ -133,15 +131,6 @@ class WeatherWatcher:
             )
             if args["force"]:
                 break
-
-    def _cache_all(
-        self,
-        st: WeatherStats,
-        now: str,
-        out_path: Path,
-    ) -> None:
-        for sink in self._sinks:
-            sink(out_path).sink(st, now)
 
 
 if __name__ == "__main__":

@@ -3,50 +3,145 @@ from abc import ABC, abstractmethod
 from dataclasses import asdict
 from pathlib import Path
 
+import telegram
+from loguru import logger
 from overrides import overrides
 
 from weather_watcher.model.stats import WeatherStats
+from weather_watcher.utils import escape_telegram_markdown_v2
 
 
 class Sink(ABC):
-    def __init__(self, out_path: Path):
+    def __init__(
+        self,
+        st: WeatherStats,
+        now: str,
+        out_path: Path | None = None,
+        bot: telegram.Bot | None = None,
+        chat_id: int | None = None,
+        skip_telegram: bool = False,
+    ):
+        self.st = st
+        self.now = now
         self.out_path = out_path
+        self.bot = bot
+        self.chat_id = chat_id
+        self.skip_telegram = skip_telegram
 
     @abstractmethod
-    def sink(self, st: WeatherStats, now: str):
+    def sink(self) -> None:
+        pass
+
+    async def send_to_telegram(self) -> None:
         pass
 
 
 class ParquetSink(Sink):
-    def __init__(self, out_path: Path):
+    def __init__(
+        self,
+        st: WeatherStats,
+        now: str,
+        out_path: Path,
+        bot: telegram.Bot | None = None,
+        chat_id: int | None = None,
+        skip_telegram: bool = False,
+    ):
+        super().__init__(
+            st=st,
+            now=now,
+            out_path=out_path,
+            bot=bot,
+            chat_id=chat_id,
+            skip_telegram=skip_telegram,
+        )
         self.out_path = out_path
+        self.data_path = self.out_path / f"{now}_weather.parquet"
 
     @overrides
-    def sink(self, st: WeatherStats, now: str):
+    def sink(self):
         # Data
-        data_path = self.out_path / f"{now}_weather.parquet"
-        st.raw_df.to_parquet(data_path)
+        self.st.raw_df.to_parquet(self.data_path)
 
 
 class StatsJSONSink(Sink):
-    def __init__(self, out_path: Path):
+    def __init__(
+        self,
+        st: WeatherStats,
+        now: str,
+        out_path: Path,
+        bot: telegram.Bot,
+        chat_id: int,
+        skip_telegram: bool = False,
+    ):
+        super().__init__(
+            st=st,
+            now=now,
+            out_path=out_path,
+            bot=bot,
+            chat_id=chat_id,
+            skip_telegram=skip_telegram,
+        )
         self.out_path = out_path
+        self.stats_path = self.out_path / f"{self.now}_weather_stats.json"
 
     @overrides
-    def sink(self, st: WeatherStats, now: str):
-        # Stats
-        stats_path = self.out_path / f"{now}_weather_stats.json"
-        with open(stats_path, "w") as f:
-            f.write(json.dumps(asdict(st), indent=4, sort_keys=True, default=str))
+    def sink(self) -> None:
+        with open(self.stats_path, "w") as f:
+            f.write(json.dumps(asdict(self.st), indent=4, sort_keys=True, default=str))
+
+    @overrides
+    async def send_to_telegram(self) -> None:
+        if not self.bot or not self.chat_id or self.skip_telegram:
+            return
+        async with self.bot:
+            msgs = self.st.build_msgs()
+            logger.info(msgs)
+            msg = "\n".join(msgs)
+            escaped_msg = escape_telegram_markdown_v2(msg)
+            logger.debug(f"Sending msg: {escaped_msg}")
+            await self.bot.send_message(
+                text=escaped_msg, chat_id=self.chat_id, parse_mode="MarkdownV2"
+            )  # type: ignore
 
 
 class FigureSink(Sink):
-    def __init__(self, out_path: Path):
+    def __init__(
+        self,
+        st: WeatherStats,
+        now: str,
+        out_path: Path,
+        bot: telegram.Bot,
+        chat_id: int,
+        skip_telegram: bool = False,
+    ):
+        super().__init__(
+            st=st,
+            now=now,
+            out_path=out_path,
+            bot=bot,
+            chat_id=chat_id,
+            skip_telegram=skip_telegram,
+        )
         self.out_path = out_path
+        # Pre-plot/cache image
+        self.img_path = self.out_path / f"{now}_weather.png"
+        self._plot()
 
     @overrides
-    def sink(self, st: WeatherStats, now: str):
-        # Img
-        fig = st.plot_weather()
-        img_path = self.out_path / f"{now}_weather.png"
-        fig.write_image(img_path)
+    def sink(self) -> None:
+        self._plot()
+
+    @overrides
+    async def send_to_telegram(self) -> None:
+        if not self.bot or not self.chat_id or self.skip_telegram:
+            return
+        async with self.bot:
+            await self.bot.send_photo(
+                chat_id=self.chat_id, photo=open(self.img_path, "rb")
+            )  # type: ignore
+
+    def _plot(self):
+        if self.img_path.exists():
+            return
+        self.fig = self.st.plot_weather()
+        self.fig.write_image(self.img_path)
