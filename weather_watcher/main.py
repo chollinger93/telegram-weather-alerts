@@ -1,80 +1,28 @@
 import argparse
 import asyncio
 import os
-from datetime import datetime, timedelta
+from datetime import datetime
 from pathlib import Path
-from typing import Optional
 
-import pandas as pd
 import pause
 import telegram
-import urllib3
 from croniter import croniter
 from loguru import logger
 
-from weather_watcher.model.stats import WeatherData, WeatherStats
-from weather_watcher.sinks.sink import FigureSink, ParquetSink, StatsJSONSink
+from weather_watcher.model.stats import WeatherStats
+from weather_watcher.parser.parser import WeatherAPIParser, WeatherParser
+from weather_watcher.sinks.sink import FigureSink, ParquetSink, Sink, StatsJSONSink
 from weather_watcher.utils import escape_telegram_markdown_v2
 
 
 class WeatherWatcher:
-    def get_forecast(
-        self, key: str, zip_code: str, days: int = 2
-    ) -> Optional[WeatherData]:
-        try:
-            url = f"https://api.weatherapi.com/v1/forecast.json?q={zip_code}&days={days}&key={key}"
-            headers = {"Content-Type": "application/json"}
-            resp = urllib3.request("GET", url, retries=10, timeout=10, headers=headers)
-            if resp.status != 200:
-                raise ValueError(f"Bad status code {resp.status}: {resp.data}")
-            return resp.json()
-        except Exception as e:
-            logger.error(f"Failed to get forecast: {e}")
-            return None
-
-    def parse_forecast(self, raw: WeatherData, max_hrs: int) -> pd.DataFrame:
-        """Weather data, hourly, for the next 48 hours, if in the future
-
-        Args:
-            raw (WeatherData): Raw
-            max_hrs (int): Max hours look into
-
-        Returns:
-            pd.DataFrame: DF
-        """
-        forecast_days = raw["forecast"]["forecastday"]
-        dfs = []
-        for day in forecast_days:
-            df = pd.DataFrame(day["hour"])
-            # Sunset/Sunrise
-            cur_dt = datetime.strptime(day["date"], "%Y-%m-%d")
-            sunrise = datetime.strptime(day["astro"]["sunrise"], "%I:%M %p").replace(
-                year=cur_dt.year, month=cur_dt.month, day=cur_dt.day
-            )
-            sunset = datetime.strptime(day["astro"]["sunset"], "%I:%M %p").replace(
-                year=cur_dt.year, month=cur_dt.month, day=cur_dt.day
-            )
-            df["sunrise"] = sunrise
-            df["sunset"] = sunset
-            dfs.append(df)
-
-        hourly = pd.concat(dfs)
-        # Time
-        now = datetime.now()
-        hourly["time"] = pd.to_datetime(hourly["time"])
-        hourly = hourly.sort_values(by=["time"])
-        hourly = hourly.loc[hourly["time"] <= now + timedelta(days=1)]
-        return hourly.reset_index().iloc[0:max_hrs]
-
-    def cache_all(
+    def __init__(
         self,
-        st: WeatherStats,
-        now: str,
-        out_path: Path,
+        parser: WeatherParser = WeatherAPIParser(),
+        sinks: list[type[Sink]] = [ParquetSink, StatsJSONSink, FigureSink],
     ) -> None:
-        FigureSink(out_path).sink(st, now)
-        ParquetSink(out_path).sink(st, now)
-        StatsJSONSink(out_path).sink(st, now)
+        self.parser = parser
+        self._sinks = sinks
 
     async def send_photo_to_bot(self, bot: telegram.Bot, chat_id: int, img_path: Path):
         async with bot:
@@ -103,19 +51,18 @@ class WeatherWatcher:
         # Telegram
         bot = telegram.Bot(telegram_token)
         # Get data
-        raw = self.get_forecast(weather_api_key, zip_code=zip_code)
+        raw = self.parser.get_forecast(weather_api_key, zip_code=zip_code)
         if not raw:
             logger.warning("Failed to get forecast")
             return []
         # Parse
-        hourly = self.parse_forecast(raw, max_hrs=48)
+        hourly = self.parser.parse_forecast(raw, max_hrs=48)
         stats = WeatherStats.apply(hourly, raw, zip_code)
         msgs = stats.build_msgs()
         logger.info(msgs)
         # Build image
         img_path = out_dir / f"{now}_weather.png"
-        fig = stats.plot_weather()
-        self.cache_all(stats, now, out_dir)
+        self._cache_all(stats, now, out_dir)
         # send msg
         if not skip_telegram:
             logger.info(f"Sending to chat id {chat_id}..")
@@ -186,6 +133,15 @@ class WeatherWatcher:
             )
             if args["force"]:
                 break
+
+    def _cache_all(
+        self,
+        st: WeatherStats,
+        now: str,
+        out_path: Path,
+    ) -> None:
+        for sink in self._sinks:
+            sink(out_path).sink(st, now)
 
 
 if __name__ == "__main__":

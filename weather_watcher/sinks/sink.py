@@ -3,11 +3,15 @@ from abc import ABC, abstractmethod
 from dataclasses import asdict
 from pathlib import Path
 
+from overrides import overrides
 
 from weather_watcher.model.stats import WeatherStats
 
 
 class Sink(ABC):
+    def __init__(self, out_path: Path):
+        self.out_path = out_path
+
     @abstractmethod
     def sink(self, st: WeatherStats, now: str):
         pass
@@ -17,6 +21,7 @@ class ParquetSink(Sink):
     def __init__(self, out_path: Path):
         self.out_path = out_path
 
+    @overrides
     def sink(self, st: WeatherStats, now: str):
         # Data
         data_path = self.out_path / f"{now}_weather.parquet"
@@ -27,6 +32,7 @@ class StatsJSONSink(Sink):
     def __init__(self, out_path: Path):
         self.out_path = out_path
 
+    @overrides
     def sink(self, st: WeatherStats, now: str):
         # Stats
         stats_path = self.out_path / f"{now}_weather_stats.json"
@@ -38,6 +44,7 @@ class FigureSink(Sink):
     def __init__(self, out_path: Path):
         self.out_path = out_path
 
+    @overrides
     def sink(self, st: WeatherStats, now: str):
         # Img
         fig = st.plot_weather()
