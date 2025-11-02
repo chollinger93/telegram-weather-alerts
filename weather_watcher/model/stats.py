@@ -26,6 +26,17 @@ class Location:
     def __str__(self) -> str:
         return f"{self.zip_code}: {self.name}, {self.region}"
 
+    def as_tags(self) -> dict[str, str]:
+        return {
+            "zip": self.zip_code,
+            "lat": str(self.lat),
+            "lon": str(self.lon),
+            "city": self.name,
+            "region": self.region,
+            "country": self.country,
+            "tz_id": self.tz_id,
+        }
+
 
 @dataclass
 class MetaStats:

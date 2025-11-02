@@ -1,9 +1,14 @@
 import json
+import os
+import time
 from abc import ABC, abstractmethod
 from dataclasses import asdict
 from pathlib import Path
 
+import influxdb_client
 import telegram
+from influxdb_client import InfluxDBClient, Point, WritePrecision
+from influxdb_client.client.write_api import SYNCHRONOUS
 from loguru import logger
 from overrides import overrides
 
@@ -145,3 +150,58 @@ class FigureSink(Sink):
             return
         self.fig = self.st.plot_weather()
         self.fig.write_image(self.img_path)
+
+
+class InfluxDBSink(Sink):
+    def __init__(
+        self,
+        st: WeatherStats,
+        now: str,
+        out_path: Path,
+        bot: telegram.Bot | None = None,
+        chat_id: int | None = None,
+        skip_telegram: bool = False,
+    ):
+        super().__init__(
+            st=st,
+            now=now,
+            out_path=out_path,
+            bot=bot,
+            chat_id=chat_id,
+            skip_telegram=skip_telegram,
+        )
+        self.out_path = out_path
+        self.url = os.environ.get("INFLUX_DB_URL")
+        self.org = os.environ.get("INFLUX_DB_ORG")
+        self.token = os.environ.get("INFLUX_DB_TOKEN")
+        self.bucket = os.environ.get("INFLUX_DB_BUCKET", "weather")
+        self.client: InfluxDBClient | None = None
+        if not self.url or not self.org or not self.token:
+            logger.warning("InfluxDB credentials not set, skipping InfluxDB sink")
+            return
+        self.client = InfluxDBClient(url=self.url, token=self.token, org=self.org)
+
+    @overrides
+    def sink(self):
+        if not self.client or not self.org:
+            return
+
+        write_api = self.client.write_api(write_options=SYNCHRONOUS)
+
+        sent = 0
+        for rec in self.st.raw_df.to_dict(orient="records"):
+            point = Point("weather")
+            point = point.time(rec["time_epoch"], write_precision=WritePrecision.S)
+            for key in ["temp_f", "humidity", "wind_mph", "precip_mm"]:
+                if key in rec:
+                    point = point.field(key, rec[key])
+            for k, v in self.st.meta.location.as_tags().items():
+                point = point.tag(k, v)
+
+            # logger.debug(f"Writing value to InfluxDB: {point}")
+            write_api.write(bucket=self.bucket, org=self.org, record=point)
+            sent += 1
+
+        logger.info(
+            f"Send {sent} records to InfluxDB at {self.url} in bucket {self.bucket}"
+        )
