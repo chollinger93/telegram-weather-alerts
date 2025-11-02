@@ -10,9 +10,10 @@ from overrides import overrides
 
 from weather_watcher.main import WeatherWatcher
 from weather_watcher.model.stats import WeatherData
+from weather_watcher.parser.parser import WeatherAPIParser
 
 
-class MockWeatherWatcher(WeatherWatcher):
+class MockWeatherAPIParser(WeatherAPIParser):
     @overrides
     def get_forecast(
         self, key: str, zip_code: str, days: int = 2
@@ -54,7 +55,7 @@ async def test_run():
     ]
 
     # Test
-    watcher = MockWeatherWatcher()
+    watcher = WeatherWatcher(parser=MockWeatherAPIParser())
     tmp_dir = Path(tempfile.TemporaryDirectory().name)
     res = await watcher.run(
         telegram_token="fake",
