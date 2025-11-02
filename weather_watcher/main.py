@@ -25,9 +25,9 @@ class WeatherWatcher:
 
     async def run(
         self,
-        telegram_token: str,
+        telegram_token: str | None,
         weather_api_key: str,
-        chat_id: int,
+        chat_id: int | None,
         zip_code: str,
         out_dir: Path,
         skip_telegram: bool = False,
@@ -36,7 +36,9 @@ class WeatherWatcher:
         out_dir.mkdir(parents=True, exist_ok=True)
         now = datetime.now().isoformat()
         # Telegram
-        bot = telegram.Bot(telegram_token)
+        bot: telegram.Bot | None = None
+        if not skip_telegram and telegram_token:
+            bot = telegram.Bot(telegram_token)
         # Get data
         raw = self.parser.get_forecast(weather_api_key, zip_code=zip_code)
         if not raw:
@@ -56,8 +58,8 @@ class WeatherWatcher:
         st: WeatherStats,
         now: str,
         out_path: Path,
-        bot: telegram.Bot,
-        chat_id: int,
+        bot: telegram.Bot | None,
+        chat_id: int | None,
         skip_telegram: bool,
     ) -> None:
         for sink in self._sinks:
@@ -70,10 +72,31 @@ class WeatherWatcher:
                 skip_telegram=skip_telegram,
             ).sink()
 
+    def _validate_args(
+        self,
+        cron: str | None,
+        chat_id: str | None,
+        force: bool,
+        skip_telegram: bool,
+        telegram_token: str | None,
+        weather_api_key: str | None,
+    ) -> None:
+        if not weather_api_key:
+            raise ValueError("WEATHER_API_KEY not set")
+
+        if not force and not cron:
+            raise ValueError("Either --cron or --force must be set")
+
+        if not skip_telegram:
+            if not telegram_token:
+                raise ValueError("TELEGRAM_TOKEN not set")
+            if not chat_id:
+                raise ValueError("Chat ID must be provided if telegram is enabled")
+
     async def main(self):
         parser = argparse.ArgumentParser(description="Grab weather, send to telegram")
         parser.add_argument(
-            "-c", "--chat", help="Chat ID", required=True, type=int, dest="chat_id"
+            "-c", "--chat", help="Chat ID", required=False, type=int, dest="chat_id"
         )
         parser.add_argument(
             "-z", "--zip", help="ZIP", required=True, type=str, dest="zip_code"
@@ -82,7 +105,7 @@ class WeatherWatcher:
             "-s",
             "--cron",
             help="Crontab schedule",
-            required=True,
+            required=False,
             type=str,
             dest="cron",
         )
@@ -104,33 +127,48 @@ class WeatherWatcher:
             dest="skip_telegram",
         )
         args = vars(parser.parse_args())
+        force = args.get("force", False)
+        cron = args.get("cron", "")
+        skip_telegram = args.get("skip_telegram", False)
+        chat_id = args.get("chat_id", None)
+        weather_api_key = os.getenv("WEATHER_API_KEY", "")
+        telegram_token = os.getenv("TELEGRAM_TOKEN", "")
 
-        weather_api_key = os.getenv("WEATHER_API_KEY")
-        if not weather_api_key:
-            raise ValueError("WEATHER_API_KEY not set")
-        telegram_token = os.getenv("TELEGRAM_TOKEN")
-        if not telegram_token:
-            raise ValueError("TELEGRAM_TOKEN not set")
+        telegram_token = self._validate_args(
+            cron=cron,
+            chat_id=chat_id,
+            force=force,
+            skip_telegram=skip_telegram,
+            weather_api_key=weather_api_key,
+            telegram_token=telegram_token,
+        )
 
-        iter = croniter(args["cron"], datetime.now())
+        if force:
+            logger.warning("Force mode, running immediately")
+            await self.run(
+                weather_api_key=weather_api_key,
+                telegram_token=telegram_token,
+                chat_id=chat_id,
+                zip_code=args["zip_code"],
+                skip_telegram=skip_telegram,
+                out_dir=Path(args["out_dir"]),
+            )
+            return
+
+        iter = croniter(cron, datetime.now())
         while True:
             dt = iter.get_next(datetime)
-            if not args["force"]:
-                logger.info(f"Next run at {dt} for {args['zip_code']}")
-                pause.until(dt)
-            else:
-                logger.warning("Force mode, skipping cron")
+            logger.info(f"Next run at {dt} for {args['zip_code']}")
+            pause.until(dt)
             logger.info("Running...")
             await self.run(
                 weather_api_key=weather_api_key,
                 telegram_token=telegram_token,
-                chat_id=args["chat_id"],
+                chat_id=args.get("chat_id", None),
                 zip_code=args["zip_code"],
                 skip_telegram=args["skip_telegram"],
                 out_dir=Path(args["out_dir"]),
             )
-            if args["force"]:
-                break
 
 
 if __name__ == "__main__":
