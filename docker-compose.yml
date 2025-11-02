@@ -1,6 +1,6 @@
 services:
   weather:
-    image: weather-alerts:latest
+    image: ${REPOSITORY_URL}:${TAG}
     build:
       context: .
       dockerfile: Dockerfile
