@@ -11,14 +11,25 @@ from loguru import logger
 
 from weather_watcher.model.stats import WeatherStats
 from weather_watcher.parser.parser import WeatherAPIParser, WeatherParser
-from weather_watcher.sinks.sink import FigureSink, ParquetSink, Sink, StatsJSONSink
+from weather_watcher.sinks.sink import (
+    FigureSink,
+    InfluxDBSink,
+    ParquetSink,
+    Sink,
+    StatsJSONSink,
+)
 
 
 class WeatherWatcher:
     def __init__(
         self,
         parser: WeatherParser = WeatherAPIParser(),
-        sinks: list[type[Sink]] = [ParquetSink, StatsJSONSink, FigureSink],
+        sinks: list[type[Sink]] = [
+            ParquetSink,
+            StatsJSONSink,
+            FigureSink,
+            InfluxDBSink,
+        ],
     ) -> None:
         self.parser = parser
         self._sinks = sinks
@@ -96,21 +107,23 @@ class WeatherWatcher:
     async def main(self):
         parser = argparse.ArgumentParser(description="Grab weather, send to telegram")
         parser.add_argument(
-            "-c", "--chat", help="Chat ID", required=False, type=int, dest="chat_id"
-        )
-        parser.add_argument(
             "-z", "--zip", help="ZIP", required=True, type=str, dest="zip_code"
         )
         parser.add_argument(
             "-s",
             "--cron",
-            help="Crontab schedule",
+            help="Crontab schedule; required if --force isn't set",
             required=False,
             type=str,
             dest="cron",
         )
         parser.add_argument(
-            "-o", "--out", help="Out dir", required=True, type=str, dest="out_dir"
+            "-o",
+            "--out",
+            help="Out dir for storing sink data",
+            required=True,
+            type=str,
+            dest="out_dir",
         )
         parser.add_argument(
             "-f",
@@ -118,6 +131,14 @@ class WeatherWatcher:
             help="Send immediately",
             required=False,
             action="store_true",
+        )
+        parser.add_argument(
+            "-c",
+            "--chat",
+            help="Chat ID; required if --skip-telegram isn't set",
+            required=False,
+            type=int,
+            dest="chat_id",
         )
         parser.add_argument(
             "--no-telegram",
