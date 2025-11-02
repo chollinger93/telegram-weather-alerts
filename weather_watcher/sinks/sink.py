@@ -97,6 +97,9 @@ class StatsJSONSink(Sink):
     @overrides
     async def send_to_telegram(self) -> None:
         if not self.bot or not self.chat_id or self.skip_telegram:
+            logger.warning(
+                f"Skipping telegram stats sink: {self.skip_telegram} skip, bot {self.bot}, chat_id {self.chat_id}"
+            )
             return
         async with self.bot:
             msgs = self.st.build_msgs()
@@ -139,6 +142,9 @@ class FigureSink(Sink):
     @overrides
     async def send_to_telegram(self) -> None:
         if not self.bot or not self.chat_id or self.skip_telegram:
+            logger.warning(
+                f"Skipping telegram figure sink: {self.skip_telegram} skip, bot {self.bot}, chat_id {self.chat_id}"
+            )
             return
         async with self.bot:
             await self.bot.send_photo(
@@ -203,5 +209,5 @@ class InfluxDBSink(Sink):
             sent += 1
 
         logger.info(
-            f"Send {sent} records to InfluxDB at {self.url} in bucket {self.bucket}"
+            f"Sent {sent} records to InfluxDB at {self.url} in bucket {self.bucket}"
         )
