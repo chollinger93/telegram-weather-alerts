@@ -61,10 +61,10 @@ class WeatherWatcher:
         msgs = stats.build_msgs()
         logger.info(msgs)
         # Cache, send to telegram
-        self._sink_all(stats, now, out_dir, bot, chat_id, skip_telegram)
+        await self._sink_all(stats, now, out_dir, bot, chat_id, skip_telegram)
         return msgs
 
-    def _sink_all(
+    async def _sink_all(
         self,
         st: WeatherStats,
         now: str,
@@ -74,14 +74,16 @@ class WeatherWatcher:
         skip_telegram: bool,
     ) -> None:
         for sink in self._sinks:
-            sink(
+            s = sink(
                 st=st,
                 now=now,
                 out_path=out_path,
                 bot=bot,
                 chat_id=chat_id,
                 skip_telegram=skip_telegram,
-            ).sink()
+            )
+            s.sink()
+            await s.send_to_telegram()
 
     def _validate_args(
         self,
@@ -155,7 +157,7 @@ class WeatherWatcher:
         weather_api_key = os.getenv("WEATHER_API_KEY", "")
         telegram_token = os.getenv("TELEGRAM_TOKEN", "")
 
-        telegram_token = self._validate_args(
+        self._validate_args(
             cron=cron,
             chat_id=chat_id,
             force=force,
