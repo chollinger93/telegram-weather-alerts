@@ -68,4 +68,4 @@ async def test_run():
     assert res == exp
     assert len(list(tmp_dir.glob("*.png"))) == 1
     assert len(list(tmp_dir.glob("*.parquet"))) == 1
-    assert len(list(tmp_dir.glob("*.json"))) == 1
+    assert len(list(tmp_dir.glob("*.json"))) == 2
