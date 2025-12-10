@@ -1,18 +1,16 @@
 import json
 import os
-import time
 from abc import ABC, abstractmethod
 from dataclasses import asdict
 from pathlib import Path
 
-import influxdb_client
 import telegram
 from influxdb_client import InfluxDBClient, Point, WritePrecision
 from influxdb_client.client.write_api import SYNCHRONOUS
 from loguru import logger
 from overrides import overrides
 
-from weather_watcher.model.stats import WeatherStats
+from weather_watcher.model.stats import WeatherData, WeatherStats
 from weather_watcher.utils import escape_telegram_markdown_v2
 
 
@@ -20,6 +18,7 @@ class Sink(ABC):
     def __init__(
         self,
         st: WeatherStats,
+        raw: WeatherData,
         now: str,
         out_path: Path | None = None,
         bot: telegram.Bot | None = None,
@@ -27,6 +26,7 @@ class Sink(ABC):
         skip_telegram: bool = False,
     ):
         self.st = st
+        self.raw = raw
         self.now = now
         self.out_path = out_path
         self.bot = bot
@@ -45,6 +45,7 @@ class ParquetSink(Sink):
     def __init__(
         self,
         st: WeatherStats,
+        raw: WeatherData,
         now: str,
         out_path: Path,
         bot: telegram.Bot | None = None,
@@ -53,6 +54,7 @@ class ParquetSink(Sink):
     ):
         super().__init__(
             st=st,
+            raw=raw,
             now=now,
             out_path=out_path,
             bot=bot,
@@ -72,6 +74,7 @@ class StatsJSONSink(Sink):
     def __init__(
         self,
         st: WeatherStats,
+        raw: WeatherData,
         now: str,
         out_path: Path,
         bot: telegram.Bot,
@@ -80,6 +83,7 @@ class StatsJSONSink(Sink):
     ):
         super().__init__(
             st=st,
+            raw=raw,
             now=now,
             out_path=out_path,
             bot=bot,
@@ -88,11 +92,14 @@ class StatsJSONSink(Sink):
         )
         self.out_path = out_path
         self.stats_path = self.out_path / f"{self.now}_weather_stats.json"
+        self.raw_path = self.out_path / f"{self.now}_raw.json"
 
     @overrides
     def sink(self) -> None:
         with open(self.stats_path, "w") as f:
             f.write(json.dumps(asdict(self.st), indent=4, sort_keys=True, default=str))
+        with open(self.raw_path, "w") as f:
+            f.write(json.dumps(self.raw, indent=4, sort_keys=False, default=str))
 
     @overrides
     async def send_to_telegram(self) -> None:
@@ -116,6 +123,7 @@ class FigureSink(Sink):
     def __init__(
         self,
         st: WeatherStats,
+        raw: WeatherData,
         now: str,
         out_path: Path,
         bot: telegram.Bot,
@@ -124,6 +132,7 @@ class FigureSink(Sink):
     ):
         super().__init__(
             st=st,
+            raw=raw,
             now=now,
             out_path=out_path,
             bot=bot,
@@ -162,6 +171,7 @@ class InfluxDBSink(Sink):
     def __init__(
         self,
         st: WeatherStats,
+        raw: WeatherData,
         now: str,
         out_path: Path,
         bot: telegram.Bot | None = None,
@@ -170,6 +180,7 @@ class InfluxDBSink(Sink):
     ):
         super().__init__(
             st=st,
+            raw=raw,
             now=now,
             out_path=out_path,
             bot=bot,

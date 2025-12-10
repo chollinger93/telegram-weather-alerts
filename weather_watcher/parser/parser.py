@@ -66,9 +66,10 @@ class WeatherAPIParser(WeatherParser):
             dfs.append(df)
 
         hourly = pd.concat(dfs)
-        # Time
+        # Time comes back in local time
         now = datetime.now()
-        hourly["time"] = pd.to_datetime(hourly["time"])
+        hourly["time"] = pd.to_datetime(hourly["time"], utc=False)
         hourly = hourly.sort_values(by=["time"])
         hourly = hourly.loc[hourly["time"] <= now + timedelta(days=1)]
-        return hourly.reset_index().iloc[0:max_hrs]
+        res = hourly.reset_index().iloc[0:max_hrs]
+        return res

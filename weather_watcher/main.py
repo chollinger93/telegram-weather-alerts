@@ -9,7 +9,7 @@ import telegram
 from croniter import croniter
 from loguru import logger
 
-from weather_watcher.model.stats import WeatherStats
+from weather_watcher.model.stats import WeatherData, WeatherStats
 from weather_watcher.parser.parser import WeatherAPIParser, WeatherParser
 from weather_watcher.sinks.sink import (
     FigureSink,
@@ -61,12 +61,13 @@ class WeatherWatcher:
         msgs = stats.build_msgs()
         logger.info(msgs)
         # Cache, send to telegram
-        await self._sink_all(stats, now, out_dir, bot, chat_id, skip_telegram)
+        await self._sink_all(stats, raw, now, out_dir, bot, chat_id, skip_telegram)
         return msgs
 
     async def _sink_all(
         self,
         st: WeatherStats,
+        raw: WeatherData,
         now: str,
         out_path: Path,
         bot: telegram.Bot | None,
@@ -76,6 +77,7 @@ class WeatherWatcher:
         for sink in self._sinks:
             s = sink(
                 st=st,
+                raw=raw,
                 now=now,
                 out_path=out_path,
                 bot=bot,

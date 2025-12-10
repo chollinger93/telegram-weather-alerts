@@ -250,8 +250,10 @@ class FreezingStats(GeneralStat):
         freezing_hrs = 0
         first_safe_temp = None
         first_safe_temp_time = None
-        # Calc
-        freezing_hrs_df = df.loc[df["temp_f"] <= min_temp_f]
+        # Only look at current/future freezing temps
+        freezing_hrs_df = df.loc[
+            (df["temp_f"] <= min_temp_f) & (df["time"] >= datetime.now())
+        ]
         is_freezing = len(freezing_hrs_df) > 0
         if is_freezing:
             min_tmp_df = df.loc[df["temp_f"] == df["temp_f"].min()]
