@@ -1,6 +1,6 @@
 [project]
 name = "telegram-weather-watcher"
-version = "1.1.1"
+version = "1.1.2"
 description = "Very simple program/script that grabs weather data for a ZIP code, sums it ups, plots it, and sends it to Telegram and other sinks"
 authors = [{ name = "Christian Hollinger", email = "christian@chollinger.com" }]
 requires-python = ">=3.11,<3.14"
