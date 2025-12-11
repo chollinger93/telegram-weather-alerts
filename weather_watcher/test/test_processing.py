@@ -48,8 +48,8 @@ async def test_run():
         "🌬️ Max wind: 9.6mph at 2025-02-22 17:00:00",
         "",
         "*Frost*",
-        "⚠️ 20 hours of freezing temps in the next 24 hours! 🥶",
-        "❄️ Average low will be: 27.9F during that time!",
+        "⚠️ 23 hours of freezing temps in the next 24 hours! 🥶",
+        "❄️ Average low will be: 28.1F during that time!",
         "🌤️ No safe temperatures in the next 24 hours!",
         "",
     ]
