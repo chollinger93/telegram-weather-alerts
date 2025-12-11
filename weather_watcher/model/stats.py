@@ -236,7 +236,7 @@ class FreezingStats(GeneralStat):
                 )
             else:
                 msgs.append(
-                    f"🌤️ Safe temperature of {self.first_safe_temp}F reached at {self.first_safe_temp_time}"
+                    f"🌤️ Next safe temperature of {self.first_safe_temp}F reached at {self.first_safe_temp_time}"
                 )
         return msgs
 
@@ -251,31 +251,21 @@ class FreezingStats(GeneralStat):
         first_safe_temp = None
         first_safe_temp_time = None
         # Only look at current/future freezing temps
-        freezing_hrs_df = df.loc[
-            (df["temp_f"] <= min_temp_f) & (df["time"] >= datetime.now())
-        ]
-        is_freezing = len(freezing_hrs_df) > 0
+        freezing_hrs_df = df.loc[(df["temp_f"] <= min_temp_f)]
+        freezing_hrs = len(freezing_hrs_df)
+        is_freezing = freezing_hrs > 0
         if is_freezing:
-            min_tmp_df = df.loc[df["temp_f"] == df["temp_f"].min()]
-            freezing_hrs_df = df.loc[
-                (df["temp_f"] <= min_temp_f)
-                & (df["time"] <= min_tmp_df.iloc[0]["time"])
-            ]
+            last_freezing_time = freezing_hrs_df["time"].max()
             avg_low_during_freezing = freezing_hrs_df["temp_f"].mean()
-            freezing_hrs = len(freezing_hrs_df)
             safe_temps_reached_df = df.loc[
-                (df["temp_f"] >= min_temp_f)
-                & (df["time"] >= min_tmp_df.iloc[0]["time"])
+                (df["temp_f"] >= min_temp_f) & (df["time"] > last_freezing_time)
             ]
-            first_safe_temp_df = safe_temps_reached_df.loc[
-                safe_temps_reached_df["time"] == safe_temps_reached_df["time"].min()
-            ]
-            if len(first_safe_temp_df) > 1:
+            if len(safe_temps_reached_df) > 0:
+                first_safe_temp_df = safe_temps_reached_df.loc[
+                    safe_temps_reached_df["time"] == safe_temps_reached_df["time"].min()
+                ].iloc[0]
                 first_safe_temp = first_safe_temp_df["temp_f"]
                 first_safe_temp_time = first_safe_temp_df["time"]
-            else:
-                first_safe_temp = None
-                first_safe_temp_time = None
 
         return FreezingStats(
             is_freezing=is_freezing,
