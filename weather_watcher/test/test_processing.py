@@ -30,27 +30,27 @@ async def test_run():
     exp = [
         "🌡️ *Weather Report for 40601: Frankfort, Kentucky* 🌡️",
         "*Generated at*: Sat, Feb 22 2025 @ 10:15AM",
-        "*From*: 2025-02-22T00:00:00 to 2025-02-23T10:00:00",
+        "*From*: 2025-02-22T10:00:00 to 2025-02-23T10:00:00",
         "",
         "🌅 Sunrise: 07:21AM",
         "🌇 Sunset: 06:27PM",
         "",
         "*Temperatures*",
-        "⬇️ Lowest temp: 19.1F at 2025-02-22 07:00:00",
+        "⬇️ Lowest temp: 24.4F at 2025-02-23 07:00:00",
         "⬆️ Highest temp: 34.6F at 2025-02-22 16:00:00",
-        "🦆 Average humidity: 83.7%",
+        "🦆 Average humidity: 80.0%",
         "",
         "*Rainfall*",
-        "🌵 No rain in the next 35 hours",
+        "🌵 No rain in the next 24 hours",
         "",
         "*Wind*",
-        "🌬️ Average wind: 5.2mph",
+        "🌬️ Average wind: 6.0mph",
         "🌬️ Max wind: 9.6mph at 2025-02-22 17:00:00",
         "",
         "*Frost*",
-        "⚠️ 8 hours of freezing temps in the next 35 hours! 🥶",
-        "❄️ Average low will be: 20.9F during that time!",
-        "🌤️ No safe temperatures in the next 35 hours!",
+        "⚠️ 20 hours of freezing temps in the next 24 hours! 🥶",
+        "❄️ Average low will be: 27.9F during that time!",
+        "🌤️ No safe temperatures in the next 24 hours!",
         "",
     ]
 
@@ -64,6 +64,7 @@ async def test_run():
         zip_code="40601",
         out_dir=tmp_dir,
         skip_telegram=True,
+        forecast_hrs=24,
     )
     assert res == exp
     assert len(list(tmp_dir.glob("*.png"))) == 1

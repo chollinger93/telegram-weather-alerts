@@ -444,8 +444,8 @@ class WeatherStats:
 
     @staticmethod
     def apply(df: pd.DataFrame, raw: WeatherData, zip_code: str) -> "WeatherStats":
-        observed_hrs = (
-            int((df["time"].max() - df["time"].min()).total_seconds() / 60 / 60) + 1
+        observed_hrs = int(
+            (df["time"].max() - df["time"].min()).total_seconds() / 60 / 60
         )
         location = Location(
             zip_code=zip_code,
