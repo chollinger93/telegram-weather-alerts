@@ -18,7 +18,7 @@ class WeatherParser(ABC):
         pass
 
     @abstractmethod
-    def parse_forecast(self, raw: WeatherData, max_hrs: int) -> pd.DataFrame:
+    def parse_forecast(self, raw: WeatherData, forecast_hrs: int = 24) -> pd.DataFrame:
         pass
 
 
@@ -39,12 +39,12 @@ class WeatherAPIParser(WeatherParser):
             return None
 
     @overrides
-    def parse_forecast(self, raw: WeatherData, max_hrs: int) -> pd.DataFrame:
+    def parse_forecast(self, raw: WeatherData, forecast_hrs: int = 24) -> pd.DataFrame:
         """Weather data, hourly, for the next 48 hours, if in the future
 
         Args:
             raw (WeatherData): Raw
-            max_hrs (int): Max hours look into
+            forecast_hrs (int): Max hours look into
 
         Returns:
             pd.DataFrame: DF
@@ -70,6 +70,7 @@ class WeatherAPIParser(WeatherParser):
         now = datetime.now()
         hourly["time"] = pd.to_datetime(hourly["time"], utc=False)
         hourly = hourly.sort_values(by=["time"])
-        hourly = hourly.loc[hourly["time"] <= now + timedelta(days=1)]
-        res = hourly.reset_index().iloc[0:max_hrs]
-        return res
+        # 24 hrs
+        hourly = hourly.loc[hourly["time"] >= now - timedelta(hours=1)]
+        hourly = hourly.loc[hourly["time"] <= now + timedelta(hours=forecast_hrs)]
+        return hourly

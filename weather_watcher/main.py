@@ -42,6 +42,7 @@ class WeatherWatcher:
         zip_code: str,
         out_dir: Path,
         skip_telegram: bool = False,
+        forecast_hrs: int = 24,
     ) -> list[str]:
         # Paths
         out_dir.mkdir(parents=True, exist_ok=True)
@@ -56,7 +57,7 @@ class WeatherWatcher:
             logger.warning("Failed to get forecast")
             return []
         # Parse
-        hourly = self.parser.parse_forecast(raw, max_hrs=48)
+        hourly = self.parser.parse_forecast(raw, forecast_hrs=forecast_hrs)
         stats = WeatherStats.apply(hourly, raw, zip_code)
         msgs = stats.build_msgs()
         logger.info(msgs)
@@ -158,6 +159,7 @@ class WeatherWatcher:
         chat_id = args.get("chat_id", None)
         weather_api_key = os.getenv("WEATHER_API_KEY", "")
         telegram_token = os.getenv("TELEGRAM_TOKEN", "")
+        forecast_hrs = int(os.getenv("FORECAST_HRS", "24"))
 
         self._validate_args(
             cron=cron,
@@ -177,6 +179,7 @@ class WeatherWatcher:
                 zip_code=args["zip_code"],
                 skip_telegram=skip_telegram,
                 out_dir=Path(args["out_dir"]),
+                forecast_hrs=forecast_hrs,
             )
             return
 
@@ -193,6 +196,7 @@ class WeatherWatcher:
                 zip_code=args["zip_code"],
                 skip_telegram=args["skip_telegram"],
                 out_dir=Path(args["out_dir"]),
+                forecast_hrs=forecast_hrs,
             )
 
 
