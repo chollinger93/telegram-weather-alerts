@@ -9,4 +9,3 @@ services:
     volumes:
       - ./data:/data
     restart: unless-stopped
-    command: '-c ${TELEGRAM_CHAT_ID} -z ${WEATHER_ZIP_CODE} -s "${CRON_SCHEDULE}" -o /data'

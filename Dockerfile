@@ -37,4 +37,4 @@ ENV PATH="/app/.venv/bin:$PATH"
 USER nonroot
 
 # Run
-ENTRYPOINT ["python3", "/app/weather_watcher/main.py"]
+ENTRYPOINT ["/bin/sh", "-c", "python3 /app/weather_watcher/main.py -c $TELEGRAM_CHAT_ID -z $WEATHER_ZIP_CODE -s \"$CRON_SCHEDULE\" -o /data"]
