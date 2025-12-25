@@ -1,6 +1,6 @@
 name: Build and Push Container
 run-name: Building weather-alerts 🚀
-on: [push]
+on: [push, workflow_dispatch]
 
 jobs:
   build-and-push:
