@@ -24,19 +24,19 @@ jobs:
 
       - name: Tag Docker image
         run: |
-          docker tag weather-alerts:latest ${{ env.DOCKER_REGISTRY }}/weather-alerts:latest
-          docker tag weather-alerts:latest ${{ env.DOCKER_REGISTRY }}/weather-alerts:uv-${{ steps.setup-uv.outputs.uv-version }}
+          docker tag weather-alerts:latest ${{ vars.DOCKER_REGISTRY }}/weather-alerts:latest
+          docker tag weather-alerts:latest ${{ vars.DOCKER_REGISTRY }}/weather-alerts:uv-${{ steps.setup-uv.outputs.uv-version }}
 
       - name: Log in to Docker registry
-        if: ${{ env.HAS_DOCKER_CREDS == 'true' }}
+        if: ${{ vars.HAS_DOCKER_CREDS == 'true' }}
         env:
           HAS_DOCKER_CREDS: ${{ secrets.DOCKER_PASSWORD != '' }}
-        run: echo "${{ secrets.DOCKER_PASSWORD }}" | docker login ${{ env.DOCKER_REGISTRY }} -u "${{ secrets.DOCKER_USERNAME }}" --password-stdin
+        run: echo "${{ secrets.DOCKER_PASSWORD }}" | docker login ${{ vars.DOCKER_REGISTRY }} -u "${{ secrets.DOCKER_USERNAME }}" --password-stdin
 
       - name: Push Docker image
-        if: ${{ env.HAS_DOCKER_CREDS == 'true' }}
+        if: ${{ vars.HAS_DOCKER_CREDS == 'true' }}
         env:
           HAS_DOCKER_CREDS: ${{ secrets.DOCKER_PASSWORD != '' }}
         run: |
-          docker push ${{ env.DOCKER_REGISTRY }}/weather-alerts:latest
-          docker push ${{ env.DOCKER_REGISTRY }}/weather-alerts:uv-${{ steps.setup-uv.outputs.uv-version }}
+          docker push ${{ vars.DOCKER_REGISTRY }}/weather-alerts:latest
+          docker push ${{ vars.DOCKER_REGISTRY }}/weather-alerts:uv-${{ steps.setup-uv.outputs.uv-version }}
